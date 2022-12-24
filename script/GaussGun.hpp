@@ -38,6 +38,12 @@ class Coil
       return m_start_time;
     }
 
+    void clean()
+    {
+      m_enabled = false;
+      m_start_time = 0;
+    }
+
   private:
     byte m_pin;
     bool m_enabled;
@@ -54,45 +60,75 @@ class Sensor
       pinMode(m_pin, INPUT_PULLUP);
     }
 
-    void upd()
+    void tick()
     {
       int value = analogRead(m_pin);
-      
-      if ((value >= m_max) && (! m_triggered))
-      {
-        m_start_time = micros();
-        m_triggered = true;
-      } else if ((value <= m_min) && m_triggered)
-      {
-        m_end_time = micros();
-        m_triggered = false;
-      }
-      
+
+      if (m_measure && (value >= m_max))
+        m_time += micros() - m_prev_time;
+
+      m_prev_time = micros();
     }
 
-    bool isTriggered() const
+    void startMeasure()
     {
-      return m_triggered;
+      m_time = 0;
+      m_measure = true;
     }
 
-    unsigned long getEndTime() const
+    void endMeasure()
     {
-      return m_end_time;
+      m_measure = false;
     }
 
-    unsigned long getStartTime() const
+    unsigned long getImpulseTime() const
     {
-      return m_start_time;
+      return m_time;
+    }
+
+    void clean()
+    {
+      m_time = 0;
+      m_measure = false;
     }
 
   private:
     byte m_pin;
-    unsigned long m_start_time;
-    unsigned long m_end_time;
     int m_max;
     int m_min;
 
-    bool m_triggered;
+    unsigned long m_time = 0;
+    unsigned long m_prev_time = 0;
+
+    bool m_measure;
+};
+
+
+
+class Voltmeter
+{
+  public:
+    Voltmeter(byte pin, double r_coef = 99.56518) : m_pin(pin)
+    {
+      pinMode(m_pin, INPUT);
+
+      m_coef = r_coef * (5.0 / 1024.0);
+    }
+
+    void tick()
+    {
+      m_value = analogRead(m_pin);
+    }
+
+    int getVoltage() const
+    {
+      return static_cast<int>((double)m_value * m_coef);
+    }
+
+  private:
+    byte m_pin;
+    int m_value;
+    double m_coef;
 };
 
 #endif
