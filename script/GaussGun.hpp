@@ -1,6 +1,6 @@
-#ifndef GAUSSGUN_CLS
-#define GAUSSGUN_CLS
+#pragma once
 
+#include "Algos.hpp"
 #include <Arduino.h>
 
 class Coil
@@ -24,7 +24,7 @@ class Coil
     {
       digitalWrite(m_pin, LOW);
 
-      m_start_time = 0;
+//      m_start_time = 0; 
       m_enabled = false;
     }
 
@@ -62,7 +62,7 @@ class Sensor
 
     void tick()
     {
-      int value = analogRead(m_pin);
+      int value = optimSens1(analogRead(m_pin));
 
       if (m_measure && (value >= m_max))
         m_time += micros() - m_prev_time;
@@ -108,7 +108,7 @@ class Sensor
 class Voltmeter
 {
   public:
-    Voltmeter(byte pin, double r_coef = 99.56518) : m_pin(pin)
+    Voltmeter(byte pin, double r_coef = 100) : m_pin(pin)
     {
       pinMode(m_pin, INPUT);
 
@@ -117,7 +117,7 @@ class Voltmeter
 
     void tick()
     {
-      m_value = analogRead(m_pin);
+      m_value = optimVoltm1(analogRead(m_pin));
     }
 
     int getVoltage() const
@@ -125,10 +125,14 @@ class Voltmeter
       return static_cast<int>((double)m_value * m_coef);
     }
 
+    int getMomentVoltage()
+    {
+      int value = analogRead(m_pin);
+      return static_cast<int>((double)value * m_coef);
+    }
+
   private:
     byte m_pin;
     int m_value;
     double m_coef;
 };
-
-#endif

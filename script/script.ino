@@ -30,10 +30,9 @@ enum class InfoScreen
 
 unsigned long const screen_update_timeout = 0.5e6;
 
-double const projectile_length = 49.0f;  // Length of projectile [millimeters]
 unsigned long const timeout = 3e6; // Timeout between shoots [microseconds]
 
-unsigned long const fire1_time = 200;  // first coil fire delay time [microseconds]
+unsigned long const fire1_time = 1000;  // first coil fire delay time [microseconds]
 
 
 
@@ -61,10 +60,9 @@ double t1;
 double t2;
 double t3;
 
-double u1;
-double u2;
-double u3;
-
+int t_fire1;
+int t_fire2;
+int t_fire3;
 
 
 // Setup program
@@ -89,43 +87,51 @@ void setup() {
 // Main loop
 
 void loop() {
-  button.tick();
-  sens1.tick();
-  voltm1.tick();
+  if (! exp_trig)
+  {
+    button.tick();
+    voltm1.tick();
+    screenTick();
+  }
 
-  screenTick();
+  sens1.tick();
   coilTick();
 
-  delayMicroseconds(10);
+  delayMicroseconds(5);
 }
 
 void handleClick()
 {
-  switch (menu_var)
-  {
-    case Menu::ready_to_fire:
-      startExperiment();
-      break;
+  if (! exp_trig)
+    switch (menu_var)
+    {
+      case Menu::ready_to_fire:
+        startExperiment();
+        break;
 
-    case Menu::after_fire:
-      changeInfo();
-      break;
-  }
+      case Menu::after_fire:
+        changeInfo();
+        break;
+    }
 }
 
 void handleDoubleClick()
 {
-
+//  if (coil1.isEnabled())
+//    coil1.setOff();
+//  else
+//    coil1.setOn();
 }
 
 void handleLongPressStart()
 {
-  switch (menu_var)
-  {
-    case Menu::after_fire:
-      preparingToExperiment();
-      break;
-  }
+  if (! exp_trig)
+    switch (menu_var)
+    {
+      case Menu::after_fire:
+        preparingToExperiment();
+        break;
+    }
 }
 
 void screenTick()
@@ -164,6 +170,8 @@ void startExperiment()
 {
   if (micros() - start_time > timeout)
   {
+    menu_var = Menu::after_fire;
+
     lcd.clear();
     lcd.setCursor(6, 0);
     lcd.print("Fire!");
@@ -185,12 +193,12 @@ void coilTick()
       coil1.setOn();
       coil1_trig = false;
     }
-    else if (micros() - coil1.getStartTime() > fire1_time)
+    else if ((micros() - coil1.getStartTime() > fire1_time) && coil1.isEnabled())
     {
       coil1.setOff();
+      t_fire1 = micros() - coil1.getStartTime();
     }
-
-    if ((micros() - start_time > 1e6) && exp_trig)
+    else if ((micros() - start_time > 1e6))
     {
       endExperiment();
     }
@@ -201,7 +209,7 @@ void coilTick()
   {
     if (coil1_trig)
     {
-      coil1.setOn(); 
+      coil1.setOn();
       coil1_trig = false;
     } else if (micros() - coil1.getStartTime() > 1e6)
     {
@@ -214,13 +222,10 @@ void coilTick()
 void endExperiment()
 {
   sens1.endMeasure();
-  
+
   t1 = (double)sens1.getImpulseTime() / 1000.0f;
-  u1 = voltm1.getVoltage();
 
-  menu_var = Menu::after_fire;
   info_screen_var = InfoScreen::first;
-
   changeInfo();
   resetSetup();
 }
@@ -250,11 +255,11 @@ void changeInfo()
       lcd.print(" ms");
 
       lcd.setCursor(0, 1);
-      lcd.print("u1= ");
+      lcd.print("im= ");
       lcd.setCursor(4, 1);
-      lcd.print(u1);
+      lcd.print(t_fire1);
       lcd.setCursor(12, 1);
-      lcd.print(" V");
+      lcd.print(" us");
 
       info_screen_var = InfoScreen::second;
       break;
@@ -268,11 +273,11 @@ void changeInfo()
       lcd.print(" ms");
 
       lcd.setCursor(0, 1);
-      lcd.print("u2= ");
+      lcd.print("im= ");
       lcd.setCursor(4, 1);
-      lcd.print(u2);
+      lcd.print(t_fire2);
       lcd.setCursor(12, 1);
-      lcd.print(" V");
+      lcd.print(" us");
 
       info_screen_var = InfoScreen::third;
       break;
@@ -286,11 +291,11 @@ void changeInfo()
       lcd.print(" ms");
 
       lcd.setCursor(0, 1);
-      lcd.print("u3= ");
+      lcd.print("im= ");
       lcd.setCursor(4, 1);
-      lcd.print(u3);
+      lcd.print(t_fire3);
       lcd.setCursor(12, 1);
-      lcd.print(" V");
+      lcd.print(" us");
 
       info_screen_var = InfoScreen::first;
       break;
